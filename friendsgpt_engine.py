@@ -5,7 +5,6 @@ import re
 from collections import Counter
 from textblob import TextBlob
 from openai import OpenAI
-import streamlit as st
 import random
 import os
 from dotenv import load_dotenv
@@ -16,7 +15,7 @@ apiKey = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=apiKey)
 
 # ----- Step 1: Load and Prepare Data from Excel File ----- #
-@st.cache_data
+
 def load_data():
     FILE_PATH = "FriendsScript.xlsx"
     df = pd.read_excel(FILE_PATH, sheet_name='FriendsScript')
@@ -110,7 +109,7 @@ def generate_prompt(user_input, character_stats, full_dialogues):
     prompt += "\nNow generate the conversation with one message from each character who had relevant interactions."
     return prompt
 
-@st.cache_data
+
 def compute_character_stats(dialogues_map):
     return {
         char: analyze_character(dialogues)
