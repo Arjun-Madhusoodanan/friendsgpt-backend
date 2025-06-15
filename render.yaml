@@ -1,0 +1,10 @@
+# render.yaml
+services:
+  - type: web
+    name: friendsgpt-backend
+    runtime: python
+    buildCommand: ""
+    startCommand: gunicorn app:app
+    env: python
+    region: oregon
+    plan: free
