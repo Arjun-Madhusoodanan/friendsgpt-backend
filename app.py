@@ -4,9 +4,9 @@ from friendsgpt_engine import run_friendsgpt
 import os
 app = Flask(__name__)
 
-# allowed_origin = os.getenv("FRIENDSGPT_FRONTEND_ORIGIN", "*")
-# CORS(app, origins=[allowed_origin]) 
-CORS(app)  # Important for React frontend access
+allowed_origin = os.getenv("FRIENDSGPT_FRONTEND_ORIGIN", "*")
+CORS(app, origins=[allowed_origin], supports_credentials=True)  # <- Allow CORS for specific frontend
+# CORS(app)  # Important for React frontend access
 
 @app.route("/chat", methods=["POST"])
 def chat():
