@@ -17,8 +17,10 @@ client = OpenAI(api_key=apiKey)
 # ----- Step 1: Load and Prepare Data from Excel File ----- #
 
 def load_data():
-    FILE_PATH = "FriendsScript.xlsx"
-    df = pd.read_excel(FILE_PATH, sheet_name='FriendsScript')
+    # FILE_PATH = "FriendsScript.xlsx"
+    FILE_PATH = "FriendsScript.csv"
+    # df = pd.read_excel(FILE_PATH, sheet_name='FriendsScript')
+    df = pd.read_csv("FriendsScript.csv")
     main_characters = [
         'Chandler Bing', 'Joey Tribbiani', 'Monica Geller',
         'Phoebe Buffay', 'Rachel Green', 'Ross Geller'
