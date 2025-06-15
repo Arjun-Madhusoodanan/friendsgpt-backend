@@ -1,9 +1,12 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # <- Enable frontend to call backend
 from friendsgpt_engine import run_friendsgpt
-
+import os
 app = Flask(__name__)
-CORS(app)  # Important for React frontend access
+
+allowed_origin = os.getenv("FRIENDSGPT_FRONTEND_ORIGIN", "*")
+CORS(app, origins=allowed_origin)
+# CORS(app)  # Important for React frontend access
 
 @app.route("/chat", methods=["POST"])
 def chat():
