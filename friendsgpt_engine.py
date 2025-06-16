@@ -7,6 +7,12 @@ import random
 import os
 from dotenv import load_dotenv
 import joblib  # <-- NEW
+import pickle
+
+def compute_character_stats_cached():
+    with open("cached_character_stats.pkl", "rb") as f:
+        return pickle.load(f)
+
 
 # Load API key
 load_dotenv()
@@ -112,15 +118,15 @@ def compute_character_stats(dialogues_map):
         for char, dialogues in dialogues_map.items()
     }
 
-def compute_character_stats_cached():
-    cache_file = "cached_character_stats.pkl"
-    if os.path.exists(cache_file):
-        return joblib.load(cache_file)
-    else:
-        dialogues, _ = load_data()
-        stats = compute_character_stats(dialogues)
-        joblib.dump(stats, cache_file)
-        return stats
+# def compute_character_stats_cached():
+#     cache_file = "cached_character_stats.pkl"
+#     if os.path.exists(cache_file):
+#         return joblib.load(cache_file)
+#     else:
+#         dialogues, _ = load_data()
+#         stats = compute_character_stats(dialogues)
+#         joblib.dump(stats, cache_file)
+#         return stats
 
 # ----- OpenAI Chat Call ----- #
 def get_friends_response(prompt):
