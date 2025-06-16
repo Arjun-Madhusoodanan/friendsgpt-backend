@@ -1,64 +1,33 @@
-import pandas as pd
+# friendsgpt_engine.py
+
 import re
-from collections import Counter
-from textblob import TextBlob
-from openai import OpenAI
+import json
 import random
-import os
+from openai import OpenAI
 from dotenv import load_dotenv
-import joblib  # <-- NEW
-import pickle
+import os
+from textblob import TextBlob
 
-def compute_character_stats_cached():
-    with open("cached_character_stats.pkl", "rb") as f:
-        return pickle.load(f)
-
-
-# Load API key
+# Load environment variables
 load_dotenv()
 apiKey = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=apiKey)
 
-# ----- Load Data ----- #
-def load_data():
-    FILE_PATH = "FriendsScript.csv"
-    df = pd.read_csv(FILE_PATH)
-    main_characters = [
-        'Chandler Bing', 'Joey Tribbiani', 'Monica Geller',
-        'Phoebe Buffay', 'Rachel Green', 'Ross Geller'
-    ]
-    character_dialogues = df[df['speaker'].isin(main_characters)]
-    main_character_dialogues = character_dialogues.groupby('speaker')['text'].apply(
-        lambda lines: [str(line) if isinstance(line, str) else '' for line in lines]
-    )
-    return main_character_dialogues, df
+# ----- Load Precomputed Character Stats and Dialogues ----- #
+def load_cached_data():
+    with open("precomputed_friends_data.json", "r", encoding="utf-8") as f:
+        data = json.load(f)
 
-# ----- Analyze Character ----- #
-def analyze_character(dialogues):
-    all_text = ' '.join(dialogues)
-    words = re.findall(r'\b\w+\b', all_text.lower())
-    sentences = re.split(r'[.!?]+', all_text)
+    character_stats = {}
+    dialogues = {}
 
-    word_count = len(words)
-    unique_words = len(set(words))
-    lexical_diversity = unique_words / word_count if word_count > 0 else 0
-    avg_sentence_length = word_count / len(sentences) if sentences else 0
+    for character, details in data.items():
+        character_stats[character] = {
+            k: v for k, v in details.items() if k != "dialogues"
+        }
+        dialogues[character] = details["dialogues"]
 
-    filtered_words = [w for w in words if len(w) > 3]
-    common_words = Counter(filtered_words).most_common(10)
-
-    sentiments = [TextBlob(line).sentiment.polarity for line in dialogues]
-    avg_sentiment = sum(sentiments) / len(sentiments) if sentiments else 0
-
-    return {
-        "word_count": word_count,
-        "unique_words": unique_words,
-        "lexical_diversity": round(lexical_diversity, 3),
-        "avg_sentence_length": round(avg_sentence_length, 2),
-        "avg_sentiment": round(avg_sentiment, 3),
-        "top_words": common_words,
-        "sentiments": sentiments
-    }
+    return character_stats, dialogues
 
 # ----- Style Summary for Topic ----- #
 def style_summary_topic(dialogues, topic):
@@ -69,6 +38,7 @@ def style_summary_topic(dialogues, topic):
     exclam = sum(1 for line in topic_lines if "!" in line)
     quest = sum(1 for line in topic_lines if "?" in line)
     short = sum(1 for line in topic_lines if len(line.split()) < 4)
+
     form = "short, punchy" if short > len(topic_lines) * 0.4 else "long-winded"
 
     sentiments_filtered = [TextBlob(line).sentiment.polarity for line in topic_lines]
@@ -86,9 +56,10 @@ def style_summary_topic(dialogues, topic):
         tone = "neutral"
 
     question_tendency = "asks lots of questions" if quest > exclam else "makes bold statements"
+
     return f"Speaks in {form} lines about this topic, is generally {tone}, and {question_tendency}."
 
-# ----- Prompt Generator ----- #
+# ----- Prompt Generation ----- #
 def generate_prompt(user_input, character_stats, full_dialogues):
     prompt = "Simulate a group chat between the 6 Friends characters."
     prompt += f"\nThe topic is: '{user_input}'\n"
@@ -99,6 +70,7 @@ def generate_prompt(user_input, character_stats, full_dialogues):
     for character, stats in character_stats.items():
         sample_words = ', '.join([word for word, _ in stats["top_words"][:5]])
         style = style_summary_topic(full_dialogues[character], user_input)
+
         topic_relevant_lines = [
             line for line in full_dialogues[character]
             if any(keyword in line.lower() for keyword in topic_keywords)
@@ -106,27 +78,11 @@ def generate_prompt(user_input, character_stats, full_dialogues):
         if not topic_relevant_lines:
             continue
         examples = random.sample(topic_relevant_lines, min(2, len(topic_relevant_lines)))
+
         prompt += f"\n{character}: Uses words like [{sample_words}]. {style} Example lines: {' | '.join(examples)}"
 
     prompt += "\nNow generate the conversation with one message from each character who had relevant interactions."
     return prompt
-
-# ----- Compute + Cache Stats ----- #
-def compute_character_stats(dialogues_map):
-    return {
-        char: analyze_character(dialogues)
-        for char, dialogues in dialogues_map.items()
-    }
-
-# def compute_character_stats_cached():
-#     cache_file = "cached_character_stats.pkl"
-#     if os.path.exists(cache_file):
-#         return joblib.load(cache_file)
-#     else:
-#         dialogues, _ = load_data()
-#         stats = compute_character_stats(dialogues)
-#         joblib.dump(stats, cache_file)
-#         return stats
 
 # ----- OpenAI Chat Call ----- #
 def get_friends_response(prompt):
@@ -140,9 +96,8 @@ def get_friends_response(prompt):
     )
     return response.choices[0].message.content
 
-# ----- Entry Point ----- #
+# ----- Main Execution Function ----- #
 def run_friendsgpt(topic: str) -> str:
-    dialogues, _ = load_data()
-    character_stats = compute_character_stats_cached()
+    character_stats, dialogues = load_cached_data()
     prompt = generate_prompt(topic, character_stats, dialogues)
     return get_friends_response(prompt)
